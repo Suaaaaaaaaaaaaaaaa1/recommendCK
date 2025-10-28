@@ -82,7 +82,7 @@ def get_first_image_url(images_str):
 
 # --- 5. HÀM TÍNH TOÁN (Đã tối ưu hóa) ---
 @st.cache_data
-def get_sampled_predictions(user_id, _model, all_recipe_ids, sample_size=20000):
+def get_sampled_predictions(user_id, _model, all_recipe_ids, sample_size=10000):
     """
     Tính toán dự đoán trên một MẪU NGẪU NHIÊN để tránh crash RAM.
     """
