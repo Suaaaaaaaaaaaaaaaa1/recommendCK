@@ -48,7 +48,7 @@ def load_metadata(file_id, dest_path):
 # --- 4. Hàm lấy hình ảnh (ĐÃ SỬA LỖI) ---
 def get_first_image_url(images_str):
     # <<< SỬA LỖI 1 TẠI ĐÂY: Dùng URL làm placeholder
-    placeholder_image = "https://i.imgur.com/gY9R3t1.png" 
+    placeholder_image = "https://cdn.freelogovectors.net/wp-content/uploads/2022/10/foodcom-logo-freelogovectors.net_-400x144.png" 
     
     # Xử lý trường hợp dữ liệu bị thiếu (NaN)
     if not isinstance(images_str, str) or pd.isna(images_str):
