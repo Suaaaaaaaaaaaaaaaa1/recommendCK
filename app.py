@@ -1,4 +1,3 @@
-
 import streamlit as st
 import pandas as pd
 import pickle
@@ -48,7 +47,7 @@ def load_metadata(file_id, dest_path):
 
 # --- 4. Hàm lấy hình ảnh (Không đổi) ---
 def get_first_image_url(images_str):
-    placeholder_image = "https://i.imgur.com/gY9R3t1.png" 
+    placeholder_image = "Không có ảnh" 
     if not isinstance(images_str, str) or pd.isna(images_str):
         return placeholder_image
     try:
@@ -100,10 +99,10 @@ if model and not metadata_df.empty:
     st.header("Tìm món ăn cho bạn")
     
     # Lấy danh sách ID món ăn (chỉ chạy 1 lần)
-    all_recipe_ids_list = metadata_df['Recipe_ID'].unique()
+    all_recipe_ids_list = metadata_df['RecipeId'].unique()
     
     # Đặt index sau khi đã lấy list ở trên (để tra cứu nhanh)
-    metadata_df = metadata_df.set_index('Recipe_ID')
+    metadata_df = metadata_df.set_index('RecipeId')
     
     user_id_input = st.number_input(
         "Nhập User ID của bạn:", 
