@@ -45,49 +45,57 @@ def load_metadata(file_id, dest_path):
         st.error(f"LỖI khi tải metadata: {e}")
         return pd.DataFrame()
 
-# --- 4. Hàm lấy hình ảnh (Không đổi) ---
+# --- 4. Hàm lấy hình ảnh (ĐÃ SỬA LỖI) ---
 def get_first_image_url(images_str):
-    placeholder_image = "Không có ảnh" 
+    # <<< SỬA LỖI 1 TẠI ĐÂY: Dùng URL làm placeholder
+    placeholder_image = "https://i.imgur.com/gY9R3t1.png" 
+    
+    # Xử lý trường hợp dữ liệu bị thiếu (NaN)
     if not isinstance(images_str, str) or pd.isna(images_str):
         return placeholder_image
+
     try:
+        # Thử chuyển đổi chuỗi (ví dụ: "['url1']" hoặc "'url1'")
         evaluated_data = ast.literal_eval(images_str)
+
+        # Case 1: Nếu kết quả là một LIST (ví dụ: ['url1', 'url2'])
         if isinstance(evaluated_data, list):
             if len(evaluated_data) > 0:
-                return evaluated_data[0]
+                return evaluated_data[0] # Lấy ảnh đầu tiên
             else:
-                return placeholder_image
+                return placeholder_image # List rỗng []
+
+        # Case 2: Nếu kết quả là một STRING (ví dụ: 'url1')
         if isinstance(evaluated_data, str):
             if evaluated_data.startswith('http'):
-                return evaluated_data
+                return evaluated_data # Trả về chính chuỗi đó
             else:
-                return placeholder_image
+                return placeholder_image # Chuỗi rỗng ""
+
     except (ValueError, SyntaxError):
+        # Case 3: Nếu không phải định dạng chuẩn (ví dụ: chỉ là http... không có dấu nháy)
         if images_str.startswith('http'):
             return images_str
+    
+    # Nếu thất bại ở mọi trường hợp
     return placeholder_image
 
-# --- 5. HÀM TÍNH TOÁN (ĐÃ SỬA LỖI) ---
+# --- 5. HÀM TÍNH TOÁN (Đã tối ưu hóa) ---
 @st.cache_data
 def get_sampled_predictions(user_id, _model, all_recipe_ids, sample_size=20000):
     """
     Tính toán dự đoán trên một MẪU NGẪU NHIÊN để tránh crash RAM.
     """
-    
-    # 1. Lấy mẫu ngẫu nhiên
     if len(all_recipe_ids) > sample_size:
-        # Chuyển đổi sang list để random.sample có thể hoạt động
         sampled_ids = random.sample(list(all_recipe_ids), sample_size)
     else:
         sampled_ids = all_recipe_ids
 
-    # 2. Chỉ dự đoán trên MẪU đã lấy
     predictions = []
     for recipe_id in sampled_ids:
         pred = _model.predict(uid=user_id, iid=recipe_id)
         predictions.append((recipe_id, pred.est))
         
-    # 3. Sắp xếp danh sách (nhỏ hơn nhiều)
     predictions.sort(key=lambda x: x[1], reverse=True)
     return predictions
 
@@ -101,10 +109,7 @@ metadata_df = load_metadata(METADATA_FILE_ID, METADATA_FILE_PATH)
 if model and not metadata_df.empty:
     st.header("Tìm món ăn cho bạn")
     
-    # Lấy danh sách ID món ăn (chỉ chạy 1 lần)
     all_recipe_ids_list = metadata_df['RecipeId'].unique()
-    
-    # Đặt index sau (để tra cứu nhanh)
     metadata_df = metadata_df.set_index('RecipeId')
     
     user_id_input = st.number_input(
@@ -117,35 +122,35 @@ if model and not metadata_df.empty:
     
     num_recs = st.slider("Số lượng gợi ý:", min_value=5, max_value=20, value=10)
 
-    # --- SỬA LỖI TẠI ĐÂY ---
     with st.spinner("Đang tính toán gợi ý..."):
         
-        # 1. Gọi hàm LẤY MẪU (đã cache, siêu nhanh)
         all_preds = get_sampled_predictions(user_id_input, model, all_recipe_ids_list)
-        
-        # 2. Lấy Top N
         top_n_preds = all_preds[:num_recs]
-        
-        # 3. Lấy Recipe IDs
         top_n_ids = [recipe_id for recipe_id, score in top_n_preds]
         
-        # 4. Tra cứu metadata
-        recs_df = metadata_df.loc[top_n_ids].copy()
-        
-        st.subheader(f"Gợi ý cho User {user_id_input}:")
-        
-        cols = st.columns(2)
-        col_idx = 0
-        
-        for index, row in recs_df.iterrows():
-            with cols[col_idx]:
-                image_url = get_first_image_url(row['Images'])
-                st.image(image_url, caption=f"Recipe ID: {row.name}", use_column_width=True)
-                st.subheader(row['Name'])
-                if 'Description' in row and pd.notna(row['Description']):
-                     st.markdown(f"**Mô tả:** {row['Description'][:150]}...")
-                st.divider()
+        # Kiểm tra nếu top_n_ids không rỗng
+        if top_n_ids:
+            recs_df = metadata_df.loc[top_n_ids].copy()
             
-            col_idx = (col_idx + 1) % 2
+            st.subheader(f"Gợi ý cho User {user_id_input}:")
+            
+            cols = st.columns(2)
+            col_idx = 0
+            
+            for index, row in recs_df.iterrows():
+                with cols[col_idx]:
+                    image_url = get_first_image_url(row['Images'])
+                    
+                    # <<< SỬA LỖI 2 TẠI ĐÂY: Đổi sang use_container_width
+                    st.image(image_url, caption=f"Recipe ID: {row.name}", use_container_width=True)
+                    
+                    st.subheader(row['Name'])
+                    if 'Description' in row and pd.notna(row['Description']):
+                         st.markdown(f"**Mô tả:** {row['Description'][:150]}...")
+                    st.divider()
+                
+                col_idx = (col_idx + 1) % 2
+        else:
+            st.warning("Không tìm thấy gợi ý nào. (Có thể do lỗi lấy mẫu)")
 else:
     st.error("Không thể tải mô hình hoặc dữ liệu từ Google Drive. Vui lòng kiểm tra lại File IDs.")
