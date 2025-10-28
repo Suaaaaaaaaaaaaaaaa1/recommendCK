@@ -4,11 +4,12 @@ import pickle
 import os
 import ast
 import gdown
+import random # <-- THÊM THƯ VIỆN NÀY
 from surprise import SVD
 
 # --- 1. Định nghĩa Tên tệp và File IDs ---
-MODEL_FILE_PATH = 'svd_model.pkl'
-METADATA_FILE_PATH = 'recipes_metadata.csv'
+MODEL_FILE_PATH = 'svd_model.pkl' 
+METADATA_FILE_PATH = 'recipes_metadata.csv' 
 
 # !!! THAY THẾ CÁC ID CỦA BẠN VÀO ĐÂY !!!
 MODEL_FILE_ID = '16v3zUzOhPqnF6n3-80lYq7UcYRmej7RJ' 
@@ -39,7 +40,6 @@ def load_metadata(file_id, dest_path):
     try:
         metadata_path = download_file_from_gdrive(file_id, dest_path)
         df = pd.read_csv(metadata_path)
-        # BÂY GIỜ KHÔNG set_index vội
         return df
     except Exception as e:
         st.error(f"LỖI khi tải metadata: {e}")
@@ -67,23 +67,27 @@ def get_first_image_url(images_str):
             return images_str
     return placeholder_image
 
-# --- 5. HÀM TÍNH TOÁN (CÓ CACHE) ---
-# Đây là phần quan trọng nhất
-# @_st.cache_data bảo Streamlit lưu kết quả vào bộ đệm
-# Nó sẽ chỉ chạy lại hàm này khi user_id hoặc all_recipe_ids thay đổi
+# --- 5. HÀM TÍNH TOÁN (ĐÃ SỬA LỖI) ---
 @st.cache_data
-def get_all_predictions(user_id, _model, all_recipe_ids):
+def get_sampled_predictions(user_id, _model, all_recipe_ids, sample_size=20000):
     """
-    Tính toán và sắp xếp TẤT CẢ dự đoán cho một user.
-    Hàm này được cache để chạy nhanh.
+    Tính toán dự đoán trên một MẪU NGẪU NHIÊN để tránh crash RAM.
     """
+    
+    # 1. Lấy mẫu ngẫu nhiên
+    if len(all_recipe_ids) > sample_size:
+        # Chuyển đổi sang list để random.sample có thể hoạt động
+        sampled_ids = random.sample(list(all_recipe_ids), sample_size)
+    else:
+        sampled_ids = all_recipe_ids
+
+    # 2. Chỉ dự đoán trên MẪU đã lấy
     predictions = []
-    for recipe_id in all_recipe_ids:
-        # _model là mô hình SVD
+    for recipe_id in sampled_ids:
         pred = _model.predict(uid=user_id, iid=recipe_id)
         predictions.append((recipe_id, pred.est))
         
-    # Sắp xếp 1 lần duy nhất
+    # 3. Sắp xếp danh sách (nhỏ hơn nhiều)
     predictions.sort(key=lambda x: x[1], reverse=True)
     return predictions
 
@@ -91,7 +95,6 @@ def get_all_predictions(user_id, _model, all_recipe_ids):
 st.set_page_config(layout="wide")
 st.title("Hệ thống Gợi ý Món ăn 🍲 🍳 🍰")
 
-# Tải model và metadata
 model = load_model(MODEL_FILE_ID, MODEL_FILE_PATH)
 metadata_df = load_metadata(METADATA_FILE_ID, METADATA_FILE_PATH)
 
@@ -101,7 +104,7 @@ if model and not metadata_df.empty:
     # Lấy danh sách ID món ăn (chỉ chạy 1 lần)
     all_recipe_ids_list = metadata_df['RecipeId'].unique()
     
-    # Đặt index sau khi đã lấy list ở trên (để tra cứu nhanh)
+    # Đặt index sau (để tra cứu nhanh)
     metadata_df = metadata_df.set_index('RecipeId')
     
     user_id_input = st.number_input(
@@ -117,16 +120,16 @@ if model and not metadata_df.empty:
     # --- SỬA LỖI TẠI ĐÂY ---
     with st.spinner("Đang tính toán gợi ý..."):
         
-        # 1. Gọi hàm CACHE (chạy rất nhanh nếu user_id không đổi)
-        all_preds = get_all_predictions(user_id_input, model, all_recipe_ids_list)
+        # 1. Gọi hàm LẤY MẪU (đã cache, siêu nhanh)
+        all_preds = get_sampled_predictions(user_id_input, model, all_recipe_ids_list)
         
-        # 2. Lấy Top N (chỉ là 1 thao tác slice, siêu nhanh)
+        # 2. Lấy Top N
         top_n_preds = all_preds[:num_recs]
         
-        # 3. Lấy Recipe IDs từ kết quả slice
+        # 3. Lấy Recipe IDs
         top_n_ids = [recipe_id for recipe_id, score in top_n_preds]
         
-        # 4. Tra cứu metadata (chỉ tra cứu N món, không phải 500k)
+        # 4. Tra cứu metadata
         recs_df = metadata_df.loc[top_n_ids].copy()
         
         st.subheader(f"Gợi ý cho User {user_id_input}:")
@@ -136,7 +139,6 @@ if model and not metadata_df.empty:
         
         for index, row in recs_df.iterrows():
             with cols[col_idx]:
-                # Dùng hàm đã sửa lỗi ảnh
                 image_url = get_first_image_url(row['Images'])
                 st.image(image_url, caption=f"Recipe ID: {row.name}", use_column_width=True)
                 st.subheader(row['Name'])
