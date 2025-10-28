@@ -161,5 +161,3 @@ if model and not metadata_df.empty:
             st.warning("Không tìm thấy gợi ý nào. (Có thể do lỗi lấy mẫu hoặc ID không có trong metadata)")
 else:
     st.error("Không thể tải mô hình hoặc dữ liệu từ Google Drive. Vui lòng kiểm tra lại File IDs.")
-else:
-    st.error("Không thể tải mô hình hoặc dữ liệu từ Google Drive. Vui lòng kiểm tra lại File IDs.")
