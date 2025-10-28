@@ -1,6 +1,8 @@
 streamlit
 pandas
-numpy
-scipy
-scikit-surprise
 gdown
+
+# Ghim phiên bản để đảm bảo tương thích
+numpy==1.23.5
+scipy==1.10.1
+scikit-surprise==1.1.3
