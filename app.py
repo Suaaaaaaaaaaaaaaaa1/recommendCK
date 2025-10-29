@@ -73,7 +73,7 @@ def get_first_image_url(images_str):
 # Hàm này sẽ sử dụng các biến 'model' và 'all_recipe_ids_tuple'
 # được định nghĩa bên ngoài
 @st.cache_data
-def get_sampled_predictions(user_id, sample_size= 10000): # <-- CHỈ NHẬN user_id
+def get_sampled_predictions(user_id, sample_size= 100000): # <-- CHỈ NHẬN user_id
     """
     Tính toán dự đoán trên một MẪU NGẪU NHIÊN.
     Hàm này chỉ phụ thuộc vào user_id nên cache RẤT NHANH.
