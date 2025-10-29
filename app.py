@@ -8,12 +8,12 @@ import random # <-- THÊM THƯ VIỆN NÀY
 from surprise import SVD
 
 # --- 1. Định nghĩa Tên tệp và File IDs ---
-MODEL_FILE_PATH = 'svd_model.pkl' 
-METADATA_FILE_PATH = 'recipes_metadata.csv' 
+MODEL_FILE_PATH = 'svd_model.pkl'
+METADATA_FILE_PATH = 'recipes_metadata.csv'
 
 # !!! THAY THẾ CÁC ID CỦA BẠN VÀO ĐÂY !!!
-MODEL_FILE_ID = '16v3zUzOhPqnF6n3-80lYq7UcYRmej7RJ' 
-METADATA_FILE_ID = '1x_Zb0mO_rOjhep71QveJcVleBLO2HCEs'
+MODEL_FILE_ID = '1mSWLAjm2Ho6Aox61PrIQJUgNyJObKSbu' 
+METADATA_FILE_ID = '1jCm7OruZnwkkd5GRU42dycNcQdGOKNRv'
 
 # --- 2. Hàm Tải tệp chung ---
 def download_file_from_gdrive(file_id, dest_path):
@@ -73,7 +73,7 @@ def get_first_image_url(images_str):
 # Hàm này sẽ sử dụng các biến 'model' và 'all_recipe_ids_tuple'
 # được định nghĩa bên ngoài
 @st.cache_data
-def get_sampled_predictions(user_id, sample_size= 100): # <-- CHỈ NHẬN user_id
+def get_sampled_predictions(user_id, sample_size= 10000): # <-- CHỈ NHẬN user_id
     """
     Tính toán dự đoán trên một MẪU NGẪU NHIÊN.
     Hàm này chỉ phụ thuộc vào user_id nên cache RẤT NHANH.
