@@ -4,14 +4,14 @@ import pickle
 import os
 import ast
 import gdown
-import random # <-- THÊM THƯ VIỆN NÀY
+import random 
 from surprise import SVD
 
 # --- 1. Định nghĩa Tên tệp và File IDs ---
-MODEL_FILE_PATH = 'svd_model.pkl'
-METADATA_FILE_PATH = 'recipes_metadata.csv'
+MODEL_FILE_PATH = 'svd_model.pkl' 
+METADATA_FILE_PATH = 'recipes_metadata.csv' 
 
-# !!! THAY THẾ CÁC ID CỦA BẠN VÀO ĐÂY !!!
+# !!! ID CỦA BẠN TỪ LẦN TRƯỚC !!!
 MODEL_FILE_ID = '1mSWLAjm2Ho6Aox61PrIQJUgNyJObKSbu' 
 METADATA_FILE_ID = '1jCm7OruZnwkkd5GRU42dycNcQdGOKNRv'
 
@@ -49,7 +49,7 @@ def load_metadata(file_id, dest_path):
 
 # --- 4. Hàm lấy hình ảnh (Không đổi) ---
 def get_first_image_url(images_str):
-    placeholder_image = "https://cdn.freelogovectors.net/wp-content/uploads/2022/10/foodcom-logo-freelogovectors.net_-400x144.png" 
+    placeholder_image = "https://cdn.freelogovectors.net/wp-content/uploads/2022/10/foodcom-logo-freelogovectors.net_-400x144.png"
     if not isinstance(images_str, str) or pd.isna(images_str):
         return placeholder_image
     try:
@@ -69,27 +69,19 @@ def get_first_image_url(images_str):
             return images_str
     return placeholder_image
 
-# --- 5. HÀM TÍNH TOÁN (ĐÃ SỬA LỖI CACHE) ---
-# Hàm này sẽ sử dụng các biến 'model' và 'all_recipe_ids_tuple'
-# được định nghĩa bên ngoài
-@st.cache_data
-def get_sampled_predictions(user_id, sample_size= 100000): # <-- CHỈ NHẬN user_id
+# --- 5. HÀM TÍNH TOÁN (ĐÃ BỎ SAMPLE) ---
+# Hàm này không cần cache nữa vì nó được gọi bằng nút bấm
+def get_all_predictions(user_id):
     """
-    Tính toán dự đoán trên một MẪU NGẪU NHIÊN.
-    Hàm này chỉ phụ thuộc vào user_id nên cache RẤT NHANH.
+    Tính toán dự đoán trên TOÀN BỘ danh sách món ăn.
     """
     
-    # 1. Lấy mẫu ngẫu nhiên
-    # (all_recipe_ids_tuple là biến toàn cục)
-    if len(all_recipe_ids_tuple) > sample_size:
-        sampled_ids = random.sample(all_recipe_ids_tuple, sample_size)
-    else:
-        sampled_ids = all_recipe_ids_tuple
+    # 1. Lấy TOÀN BỘ ID (dùng biến toàn cục)
+    all_ids = all_recipe_ids_tuple
 
-    # 2. Chỉ dự đoán trên MẪU đã lấy
-    # (model là biến toàn cục)
+    # 2. Dự đoán trên TOÀN BỘ (dùng biến toàn cục)
     predictions = []
-    for recipe_id in sampled_ids:
+    for recipe_id in all_ids:
         pred = model.predict(uid=user_id, iid=recipe_id)
         predictions.append((recipe_id, pred.est))
         
@@ -102,14 +94,14 @@ st.set_page_config(layout="wide")
 st.title("Hệ thống Gợi ý Món ăn 🍲 🍳 🍰")
 
 # --- NẠP CÁC BIẾN "TOÀN CỤC" ---
-# Các biến này được nạp 1 lần duy nhất và không bị cache lại
 model = load_model(MODEL_FILE_ID, MODEL_FILE_PATH)
 metadata_df = load_metadata(METADATA_FILE_ID, METADATA_FILE_PATH)
 
 if model and not metadata_df.empty:
     st.header("Tìm món ăn cho bạn")
     
-    # Tạo các biến "toàn cục" 1 lần
+    # --- SỬA LỖI TYPO (gõ nhầm) TẠI ĐÂY ---
+    # Tên cột phải là 'Recipe_ID' (có dấu gạch dưới)
     all_recipe_ids_tuple = tuple(metadata_df['RecipeId'].unique())
     metadata_df = metadata_df.set_index('RecipeId')
     
@@ -124,25 +116,29 @@ if model and not metadata_df.empty:
     
     num_recs = st.slider("Số lượng gợi ý:", min_value=5, max_value=20, value=10)
 
-    # --- HIỂN THỊ KẾT QUẢ ---
-    with st.spinner("Đang tính toán gợi ý..."):
-        
-        # 1. Gọi hàm LẤY MẪU (đã cache)
-        # BÂY GIỜ CHỈ CẦN TRUYỀN user_id
-        all_preds = get_sampled_predictions(user_id_input) 
-        
-        # 2. Lấy Top N
+    # --- THÊM LẠI NÚT BẤM ---
+    if st.button("Tìm kiếm gợi ý"):
+        with st.spinner("Đang tính toán gợi ý (trên toàn bộ dữ liệu)..."):
+            # Chạy hàm tính toán MỚI (không sample)
+            all_preds = get_all_predictions(user_id_input) 
+            # LƯU kết quả vào session_state
+            st.session_state['all_predictions'] = all_preds
+    
+    # --- HIỂN THỊ KẾT QUẢ TỪ SESSION_STATE ---
+    # Luôn kiểm tra xem 'all_predictions' đã tồn tại chưa
+    if 'all_predictions' in st.session_state:
+        # Lấy Top N từ kết quả đã lưu
+        all_preds = st.session_state['all_predictions']
         top_n_preds = all_preds[:num_recs]
         
-        # 3. Lấy Recipe IDs
         top_n_ids = [recipe_id for recipe_id, score in top_n_preds]
         
-        # 4. Tra cứu metadata
+        # Tra cứu metadata
         valid_top_n_ids = [idx for idx in top_n_ids if idx in metadata_df.index]
         if valid_top_n_ids:
             recs_df = metadata_df.loc[valid_top_n_ids].copy()
             
-            st.subheader(f"Gợi ý cho User {user_id_input}:")
+            st.subheader(f"Kết quả gợi ý:")
             
             cols = st.columns(2)
             col_idx = 0
@@ -158,6 +154,6 @@ if model and not metadata_df.empty:
                 
                 col_idx = (col_idx + 1) % 2
         else:
-            st.warning("Không tìm thấy gợi ý nào. (Có thể do lỗi lấy mẫu hoặc ID không có trong metadata)")
+            st.warning("Không tìm thấy gợi ý nào.")
 else:
     st.error("Không thể tải mô hình hoặc dữ liệu từ Google Drive. Vui lòng kiểm tra lại File IDs.")
