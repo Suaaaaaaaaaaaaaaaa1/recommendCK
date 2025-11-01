@@ -70,23 +70,29 @@ def get_all_predictions(user_id):
     return predictions
 
 # --- 6. HÀM XÂY DỰNG TAB 1 (Duyệt món ăn) ---
+# <<< SỬA LỖI HOÀN TOÀN: Bỏ st.dialog
 def build_browse_tab(metadata_df):
     
-    # 6.1. Xử lý hiển thị chi tiết (Dùng 'with' vì đã nâng cấp Streamlit)
+    # 6.1. Kiểm tra xem có đang ở chế độ "Xem chi tiết" không
     if 'detail_recipe_id' in st.session_state and st.session_state['detail_recipe_id'] is not None:
         recipe_id = st.session_state['detail_recipe_id']
         recipe_data = metadata_df[metadata_df['RecipeId'] == recipe_id].iloc[0]
         
-        with st.dialog(f"Chi tiết món ăn: {recipe_data['Name']}"):
-            st.image(get_first_image_url(recipe_data['Images']), use_container_width=True)
-            st.subheader(recipe_data['Name'])
-            st.dataframe(recipe_data) 
+        # --- HIỂN THỊ TRANG CHI TIẾT ---
+        
+        # Thêm nút "Quay lại" (theo yêu cầu của bạn)
+        if st.button("⬅️ Quay lại danh sách"):
+            st.session_state['detail_recipe_id'] = None
+            st.rerun()
             
-            if st.button("Đóng", key="close_dialog"):
-                st.session_state['detail_recipe_id'] = None
-                st.rerun() 
-
-    # 6.2. Bộ lọc
+        st.image(get_first_image_url(recipe_data['Images']), use_container_width=True)
+        st.subheader(recipe_data['Name'])
+        st.dataframe(recipe_data) # Hiển thị tất cả thông tin
+        
+        # Dừng hàm tại đây, không hiển thị danh sách
+        return 
+    
+    # 6.2. --- HIỂN THỊ TRANG DANH SÁCH (Mặc định) ---
     with st.expander("Tìm kiếm và Lọc", expanded=True):
         col1, col2 = st.columns(2)
         with col1:
@@ -144,13 +150,14 @@ def build_browse_tab(metadata_df):
                 st.image(image_url, caption=f"Recipe ID: {row['RecipeId']}", use_container_width=True)
                 st.subheader(row['Name'])
                 
+                # Nút này sẽ đặt session_state và kích hoạt rerun,
+                # làm cho logic ở 6.1 (đầu hàm) chạy
                 if st.button("Xem chi tiết", key=f"detail_{row['RecipeId']}"):
                     st.session_state['detail_recipe_id'] = row['RecipeId']
                     st.rerun() 
                 
                 st.divider()
             
-            # <<< SỬA LỖI TẠI ĐÂY: Hoàn thành dòng
             col_idx = (col_idx + 1) % 2
 
 # --- 7. HÀM XÂY DỰNG TAB 2 (Gợi ý) ---
