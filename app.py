@@ -87,13 +87,13 @@ def get_all_predictions(user_id):
 def build_browse_tab(metadata_df):
     
     # 7.1. Chế độ XEM CHI TIẾT
-    if 'detail_recipe_id' in st.session_state and st.session_state['detail_recipe_id'] is not None:
-        recipe_id = st.session_state['detail_recipe_id']
+    if 'detail_recipe_id' in st.session_state and st.session_state.detail_recipe_id is not None:
+        recipe_id = st.session_state.detail_recipe_id
         recipe_data = metadata_df[metadata_df['RecipeId'] == recipe_id].iloc[0]
         
         # Bố cục trang chi tiết
         if st.button("⬅️ Quay lại danh sách"):
-            st.session_state['detail_recipe_id'] = None
+            st.session_state.detail_recipe_id = None
             st.rerun()
         
         img_col, info_col = st.columns([1, 2])
@@ -138,38 +138,46 @@ def build_browse_tab(metadata_df):
         return 
     
     # 7.2. Chế độ DANH SÁCH (Mặc định)
+    
+    # <<< THÊM MỚI TẠI ĐÂY: Hàm reset trang
+    def reset_page_number():
+        if st.session_state.page_number > 1:
+            st.session_state.page_number = 1
+
     with st.expander("Tìm kiếm và Lọc", expanded=True):
-        col1, col2 = st.columns(2)
+        col1, col2, col3 = st.columns([2, 1, 1])
         with col1:
-            # <<< SỬA LỖI TẠI ĐÂY: Thay st.text_input bằng st.selectbox
-            # 1. Lấy danh sách tên món ăn
-            all_names = sorted(list(metadata_df['Name'].dropna().unique()))
-            # 2. Thêm tùy chọn "Tất cả"
-            name_options = ["(Chọn tên món ăn)"] + all_names
-            # 3. Tạo selectbox (nó sẽ có thanh tìm kiếm)
-            search_name = st.selectbox("Tìm theo Tên món ăn", options=name_options)
-            
-            search_id = st.number_input("Tìm theo ID món ăn", value=None, step=1, placeholder="Nhập ID...")
+            # <<< SỬA LỖI TẠI ĐÂY: Quay lại st.text_input và liên kết với session_state
+            st.text_input("Tìm theo Tên món ăn", key="search_name", on_change=reset_page_number)
+            st.text_input("Lọc theo Nguyên liệu (phân cách bằng dấu phẩy)", key="search_ingredients", on_change=reset_page_number)
         
         with col2:
+            st.number_input("Tìm theo ID món ăn", value=None, step=1, placeholder="Nhập ID...", key="search_id", on_change=reset_page_number)
             categories = ["Tất cả"] + sorted(list(metadata_df['RecipeCategory'].dropna().unique()))
-            search_category = st.selectbox("Lọc theo Danh mục", options=categories)
-            search_ingredients = st.text_input("Lọc theo Nguyên liệu (phân cách bằng dấu phẩy)")
+            st.selectbox("Lọc theo Danh mục", options=categories, key="search_category", on_change=reset_page_number)
+        
+        with col3:
+             # <<< THÊM MỚI TẠI ĐÂY: Nút Xóa bộ lọc
+            st.write("Xóa bộ lọc:") # Thêm label
+            if st.button("Xóa toàn bộ", use_container_width=True):
+                st.session_state.search_name = ""
+                st.session_state.search_id = None
+                st.session_state.search_category = "Tất cả"
+                st.session_state.search_ingredients = ""
+                st.session_state.page_number = 1
+                st.rerun()
 
-    # Áp dụng bộ lọc
+    # Áp dụng bộ lọc (Đọc từ st.session_state)
     filtered_df = metadata_df.copy()
 
-    # <<< SỬA LỖI TẠI ĐÂY: Thay đổi logic lọc
-    # Lọc chính xác, không lọc từng phần
-    if search_name != "(Chọn tên món ăn)":
-        filtered_df = filtered_df[filtered_df['Name'] == search_name]
-    
-    if search_id is not None:
-        filtered_df = filtered_df[filtered_df['RecipeId'] == search_id]
-    if search_category != "Tất cả":
-        filtered_df = filtered_df[filtered_df['RecipeCategory'] == search_category]
-    if search_ingredients:
-        ingredients_list = [ing.strip() for ing in search_ingredients.split(',') if ing.strip()]
+    if st.session_state.search_name:
+        filtered_df = filtered_df[filtered_df['Name'].str.contains(st.session_state.search_name, case=False, na=False)]
+    if st.session_state.search_id is not None:
+        filtered_df = filtered_df[filtered_df['RecipeId'] == st.session_state.search_id]
+    if st.session_state.search_category != "Tất cả":
+        filtered_df = filtered_df[filtered_df['RecipeCategory'] == st.session_state.search_category]
+    if st.session_state.search_ingredients:
+        ingredients_list = [ing.strip() for ing in st.session_state.search_ingredients.split(',') if ing.strip()]
         for ing in ingredients_list:
             filtered_df = filtered_df[filtered_df['RecipeIngredientParts'].str.contains(ing, case=False, na=False)]
 
@@ -183,11 +191,12 @@ def build_browse_tab(metadata_df):
         
         page_col1, page_col2 = st.columns([1, 1])
         with page_col1:
-            page_number = st.number_input("Trang", min_value=1, max_value=total_pages, value=1, step=1)
+            # <<< SỬA LỖI TẠI ĐÂY: Liên kết với session_state
+            st.number_input("Trang", min_value=1, max_value=total_pages, step=1, key="page_number")
         with page_col2:
             st.write(f"Tổng số trang: {total_pages}")
 
-        start_idx = (page_number - 1) * ITEMS_PER_PAGE
+        start_idx = (st.session_state.page_number - 1) * ITEMS_PER_PAGE
         end_idx = min(start_idx + ITEMS_PER_PAGE, total_items)
         items_to_display = filtered_df.iloc[start_idx:end_idx]
 
@@ -202,7 +211,7 @@ def build_browse_tab(metadata_df):
                 st.subheader(row['Name'])
                 
                 if st.button("Xem chi tiết", key=f"detail_{row['RecipeId']}"):
-                    st.session_state['detail_recipe_id'] = row['RecipeId']
+                    st.session_state.detail_recipe_id = row['RecipeId']
                     st.rerun() 
                 
                 st.divider()
@@ -228,8 +237,8 @@ def build_predict_tab(metadata_df_indexed):
             all_preds = get_all_predictions(user_id_input) 
             st.session_state['all_predictions'] = all_preds
     
-    if 'all_predictions' in st.session_state and st.session_state['all_predictions'] is not None:
-        all_preds = st.session_state['all_predictions']
+    if 'all_predictions' in st.session_state and st.session_state.all_predictions is not None:
+        all_preds = st.session_state.all_predictions
         top_n_preds = all_preds[:num_recs]
         top_n_ids = [recipe_id for recipe_id, score in top_n_preds]
         
@@ -265,10 +274,22 @@ metadata_df = load_metadata(METADATA_FILE_ID, METADATA_FILE_PATH)
 
 if model and not metadata_df.empty:
     
+    # <<< THÊM MỚI TẠI ĐÂY: Khởi tạo tất cả session state
     if 'detail_recipe_id' not in st.session_state:
-        st.session_state['detail_recipe_id'] = None
+        st.session_state.detail_recipe_id = None
     if 'all_predictions' not in st.session_state:
-        st.session_state['all_predictions'] = None
+        st.session_state.all_predictions = None
+    if 'search_name' not in st.session_state:
+        st.session_state.search_name = ""
+    if 'search_id' not in st.session_state:
+        st.session_state.search_id = None
+    if 'search_category' not in st.session_state:
+        st.session_state.search_category = "Tất cả"
+    if 'search_ingredients' not in st.session_state:
+        st.session_state.search_ingredients = ""
+    if 'page_number' not in st.session_state:
+        st.session_state.page_number = 1
+    # <<< KẾT THÚC THÊM MỚI
     
     all_recipe_ids_tuple = tuple(metadata_df['RecipeId'].unique())
     metadata_df_indexed = metadata_df.set_index('RecipeId')
