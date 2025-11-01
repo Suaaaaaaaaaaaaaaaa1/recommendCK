@@ -125,7 +125,6 @@ def build_detail_page(metadata_df):
     # Nút Quay lại
     if st.button("⬅️ Quay lại"):
         st.session_state.detail_recipe_id = None
-        # Không cần set active_tab, vì nó đã được lưu
         st.rerun()
     
     # Bố cục trang chi tiết
@@ -181,10 +180,10 @@ def build_browse_tab(metadata_df):
         st.session_state.page_number = 1
     
     def reset_page_number():
-        if st.session_state.page_number > 1:
+        if 'page_number' in st.session_state and st.session_state.page_number > 1:
             st.session_state.page_number = 1
 
-    # 7.2. Chế độ DANH SÁCH (Mặc định)
+    # Chế độ DANH SÁCH (Mặc định)
     with st.expander("Tìm kiếm và Lọc", expanded=True):
         col1, col2, col3 = st.columns([2, 1, 1])
         with col1:
@@ -243,7 +242,6 @@ def build_browse_tab(metadata_df):
                 
                 if st.button("Xem chi tiết", key=f"detail_{row['RecipeId']}"):
                     st.session_state.detail_recipe_id = row['RecipeId']
-                    # KHÔNG CẦN LƯU TAB VÌ RADIO SẼ TỰ NHỚ
                     st.rerun() 
                 
                 st.divider()
@@ -383,9 +381,8 @@ if model and (not metadata_df.empty) and similarity_matrix is not None and id_ma
         st.session_state.search_ingredients = ""
     if 'page_number' not in st.session_state:
         st.session_state.page_number = 1
-    # <<< THÊM MỚI TẠI ĐÂY: Lưu tab đang hoạt động
     if 'active_tab' not in st.session_state:
-        st.session_state.active_tab = "Duyệt Món Ăn" # Tab mặc định
+        st.session_state.active_tab = "Duyệt Món Ăn" 
     
     # Tạo các biến toàn cục
     all_recipe_ids_tuple = tuple(metadata_df['RecipeId'].unique())
@@ -396,26 +393,25 @@ if model and (not metadata_df.empty) and similarity_matrix is not None and id_ma
     if st.session_state.detail_recipe_id is not None:
         build_detail_page(metadata_df)
     
-    # Ngược lại, hiển thị "tabs" (dùng radio)
+    # Ngược lại, hiển thị "tabs"
     else:
-        # <<< SỬA LỖI TẠI ĐÂY: Dùng st.radio để mô phỏng tabs
+        # <<< SỬA LỖI TẠI ĐÂY: Dùng st.radio
         tab_list = ["Duyệt Món Ăn", "Gợi Ý Cho Bạn", "Tìm Món Tương Tự"]
         
-        selected_tab = st.radio(
+        st.radio(
             "Navigation", 
             tab_list, 
             key="active_tab", # Liên kết với session state
             horizontal=True,
-            label_visibility="collapsed" # Ẩn chữ "Navigation"
+            label_visibility="collapsed"
         )
-        # <<< KẾT THÚC SỬA LỖI
-
-        # Dùng if/elif để hiển thị đúng tab
-        if selected_tab == "Duyệt Món Ăn":
+        
+        # <<< SỬA LỖI TẠI ĐÂY: Đọc trực tiếp từ session_state
+        if st.session_state.active_tab == "Duyệt Món Ăn":
             build_browse_tab(metadata_df)
-        elif selected_tab == "Gợi Ý Cho Bạn":
+        elif st.session_state.active_tab == "Gợi Ý Cho Bạn":
             build_predict_tab(metadata_df_indexed)
-        elif selected_tab == "Tìm Món Tương Tự":
+        elif st.session_state.active_tab == "Tìm Món Tương Tự":
             build_similar_item_tab(metadata_df, metadata_df_indexed)
         
 else:
