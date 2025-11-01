@@ -8,31 +8,25 @@ import random
 import re 
 from surprise import SVD
 
-# --- 1. Định nghĩa Tên tệp và File IDs ---
 MODEL_FILE_PATH = 'svd_model.pkl' 
 METADATA_FILE_PATH = 'recipes_metadata.csv' 
 SIMILARITY_FILE_PATH = 'item_similarity.pkl'
 ID_MAP_TO_INNER_PATH = 'recipe_id_to_inner_id.pkl'
 ID_MAP_TO_RECIPE_PATH = 'inner_id_to_recipe_id.pkl'
 
-# !!! THAY THẾ CÁC ID CỦA BẠN VÀO ĐÂY !!!
 MODEL_FILE_ID = '1mSWLAjm2Ho6Aox61PrIQJUgNyJObKSbu' 
 METADATA_FILE_ID = '1jCm7OruZnwkkd5GRU42dycNcQdGOKNRv'
-# --- THÊM ID CỦA 3 TỆP MỚI BẠN VỪA TẢI LÊN ---
 SIMILARITY_FILE_ID = '1fZet8_t6XGIr_xPkivSHOi21kNbg4RnU'
 ID_MAP_TO_INNER_ID = '1QPExL4F4ccoAGqZiVnZjhvk6BHWR4hry'
 ID_MAP_TO_RECIPE_ID = '1wEpHK4vUKQ7YvY1OWKd65xQTfD8oJgX6'
 
-
-# --- 2. Hàm Tải tệp chung ---
 def download_file_from_gdrive(file_id, dest_path):
     if not os.path.exists(dest_path):
-        with st.spinner(f"Đang tải tài nguyên: {dest_path} (lần đầu tiên)..."):
+        with st.spinner(f"Đang tải tài nguyên: {dest_path}"):
             url = f'https://drive.google.com/uc?id={file_id}'
             gdown.download(url, dest_path, quiet=False)
     return dest_path
 
-# --- 3. Hàm Tải Model và Dữ liệu ---
 @st.cache_resource
 def load_model(file_id, dest_path):
     try:
@@ -65,7 +59,6 @@ def load_pickle_file(file_id, dest_path):
         st.error(f"LỖI khi tải tệp {dest_path}: {e}")
         return None
 
-# --- 4. HÀM LẤY HÌNH ẢNH (Không đổi) ---
 def get_first_image_url(images_str):
     placeholder_image = "https://cdn.freelogovectors.net/wp-content/uploads/2022/10/foodcom-logo-freelogovectors.net_-400x144.png"
     if not isinstance(images_str, str) or pd.isna(images_str):
@@ -78,7 +71,6 @@ def get_first_image_url(images_str):
             return images_str
     return placeholder_image
 
-# --- 5. HÀM LÀM SẠCH TEXT (Không đổi) ---
 def format_c_string(text_str, as_list=False):
     placeholder = "Không có thông tin"
     if not isinstance(text_str, str) or pd.isna(text_str):
@@ -92,7 +84,6 @@ def format_c_string(text_str, as_list=False):
     else:
         return text_str if not as_list else [text_str]
 
-# --- 6. HÀM TÍNH TOÁN (Cho Tab 2) ---
 def get_all_predictions(user_id):
     all_ids = all_recipe_ids_tuple
     predictions = []
@@ -102,7 +93,6 @@ def get_all_predictions(user_id):
     predictions.sort(key=lambda x: x[1], reverse=True)
     return predictions
 
-# --- HÀM TÍNH TOÁN (Cho Tab 3) ---
 def get_similar_items(recipe_id, num_recs=9):
     try:
         target_inner_id = id_map_to_inner[recipe_id]
@@ -117,7 +107,6 @@ def get_similar_items(recipe_id, num_recs=9):
         print(e)
         return []
 
-# --- HÀM MỚI: HIỂN THỊ CHI TIẾT ---
 def build_detail_page(metadata_df):
     recipe_id = st.session_state.detail_recipe_id
     recipe_data = metadata_df[metadata_df['RecipeId'] == recipe_id].iloc[0]
@@ -127,7 +116,6 @@ def build_detail_page(metadata_df):
         st.session_state.detail_recipe_id = None
         st.rerun()
     
-    # Bố cục trang chi tiết
     img_col, info_col = st.columns([1, 2])
     with img_col:
         st.image(get_first_image_url(recipe_data.get('Images')), use_container_width=True)
@@ -168,10 +156,8 @@ def build_detail_page(metadata_df):
     else:
         st.write(instructions_list)
 
-# --- 7. HÀM XÂY DỰNG TAB 1 (Duyệt món ăn) ---
 def build_browse_tab(metadata_df):
     
-    # Callbacks
     def clear_all_filters():
         st.session_state.search_name = ""
         st.session_state.search_id = None
@@ -183,12 +169,11 @@ def build_browse_tab(metadata_df):
         if 'page_number' in st.session_state and st.session_state.page_number > 1:
             st.session_state.page_number = 1
 
-    # Chế độ DANH SÁCH (Mặc định)
     with st.expander("Tìm kiếm và Lọc", expanded=True):
         col1, col2, col3 = st.columns([2, 1, 1])
         with col1:
             st.text_input("Tìm theo Tên món ăn", key="search_name", on_change=reset_page_number)
-            st.text_input("Lọc theo Nguyên liệu (phân cách bằng dấu phẩy)", key="search_ingredients", on_change=reset_page_number)
+            st.text_input("Lọc theo Nguyên liệu", key="search_ingredients", on_change=reset_page_number)
         
         with col2:
             st.number_input("Tìm theo ID món ăn", value=None, step=1, placeholder="Nhập ID...", key="search_id", on_change=reset_page_number)
@@ -199,7 +184,6 @@ def build_browse_tab(metadata_df):
             st.write("Xóa bộ lọc:")
             st.button("Xóa toàn bộ", use_container_width=True, on_click=clear_all_filters)
 
-    # Áp dụng bộ lọc
     filtered_df = metadata_df.copy()
     if st.session_state.search_name:
         filtered_df = filtered_df[filtered_df['Name'].str.contains(st.session_state.search_name, case=False, na=False)]
@@ -212,7 +196,6 @@ def build_browse_tab(metadata_df):
         for ing in ingredients_list:
             filtered_df = filtered_df[filtered_df['RecipeIngredientParts'].str.contains(ing, case=False, na=False)]
 
-    # Phân trang
     total_items = len(filtered_df)
     st.write(f"Tìm thấy **{total_items}** món ăn phù hợp.")
     
@@ -230,7 +213,6 @@ def build_browse_tab(metadata_df):
         end_idx = min(start_idx + ITEMS_PER_PAGE, total_items)
         items_to_display = filtered_df.iloc[start_idx:end_idx]
 
-        # 3 cột
         cols = st.columns(3)
         col_idx = 0
         
@@ -248,17 +230,16 @@ def build_browse_tab(metadata_df):
             
             col_idx = (col_idx + 1) % 3
 
-# --- 8. HÀM XÂY DỰNG TAB 2 (Gợi ý) ---
 def build_predict_tab(metadata_df_indexed):
     
     st.header("Tìm món ăn cho bạn")
     
     user_id_input = st.number_input(
-        "Nhập User ID của bạn:", 
+        "Nhập User ID:", 
         min_value=1, 
         value=1535,
         step=1,
-        help="Hãy nhập một User ID (ví dụ: 1535, 2046, 5201...)"
+        help="Hãy nhập User ID (ví dụ: 1535, 2046, 5201...)"
     )
     num_recs = st.slider("Số lượng gợi ý:", min_value=3, max_value=21, value=9, step=3)
 
@@ -279,7 +260,6 @@ def build_predict_tab(metadata_df_indexed):
             
             st.subheader(f"Kết quả gợi ý:")
             
-            # 3 cột
             cols = st.columns(3)
             col_idx = 0
             
@@ -301,12 +281,10 @@ def build_predict_tab(metadata_df_indexed):
         else:
             st.warning("Không tìm thấy gợi ý nào.")
 
-# --- HÀM MỚI: XÂY DỰNG TAB 3 (Món ăn tương tự) ---
 def build_similar_item_tab(metadata_df, metadata_df_indexed):
     
     st.header("Tìm các món ăn tương tự")
     
-    # Lấy danh sách tên món ăn để chọn
     all_names = sorted(list(metadata_df['Name'].dropna().unique()))
     name_options = ["(Chọn một món ăn)"] + all_names
     
@@ -314,12 +292,10 @@ def build_similar_item_tab(metadata_df, metadata_df_indexed):
     
     if selected_name != "(Chọn một món ăn)":
         
-        # Tìm RecipeId từ tên
         try:
             selected_recipe_id = metadata_df[metadata_df['Name'] == selected_name].iloc[0]['RecipeId']
             st.write(f"Đang tìm các món ăn tương tự như: **{selected_name}** (ID: {selected_recipe_id})")
 
-            # Gọi hàm gợi ý mới
             similar_recipe_ids = get_similar_items(selected_recipe_id, num_recs=9)
             
             if similar_recipe_ids:
@@ -327,7 +303,6 @@ def build_similar_item_tab(metadata_df, metadata_df_indexed):
                 
                 st.subheader(f"Các món ăn tương tự:")
                 
-                # 3 cột
                 cols = st.columns(3)
                 col_idx = 0
                 
@@ -347,26 +322,22 @@ def build_similar_item_tab(metadata_df, metadata_df_indexed):
                     
                     col_idx = (col_idx + 1) % 3
             else:
-                st.warning("Không tìm thấy món ăn tương tự (có thể món ăn này không có trong mô hình huấn luyện).")
+                st.warning("Không tìm thấy món ăn tương tự")
                 
         except IndexError:
             st.error("Không tìm thấy ID cho món ăn này.")
 
-# --- 9. CHẠY ỨNG DỤNG CHÍNH ---
 st.set_page_config(layout="wide")
 st.title("Hệ thống Gợi ý Món ăn 🍲 🍳 🍰")
 
-# --- NẠP TẤT CẢ DỮ LIỆU ---
 model = load_model(MODEL_FILE_ID, MODEL_FILE_PATH)
 metadata_df = load_metadata(METADATA_FILE_ID, METADATA_FILE_PATH)
 similarity_matrix = load_pickle_file(SIMILARITY_FILE_ID, SIMILARITY_FILE_PATH)
 id_map_to_inner = load_pickle_file(ID_MAP_TO_INNER_ID, ID_MAP_TO_INNER_PATH)
 id_map_to_recipe = load_pickle_file(ID_MAP_TO_RECIPE_ID, ID_MAP_TO_RECIPE_PATH)
 
-# Kiểm tra xem tất cả đã được tải
 if model and (not metadata_df.empty) and similarity_matrix is not None and id_map_to_inner and id_map_to_recipe:
     
-    # Khởi tạo session state
     if 'detail_recipe_id' not in st.session_state:
         st.session_state.detail_recipe_id = None
     if 'all_predictions' not in st.session_state:
@@ -382,37 +353,31 @@ if model and (not metadata_df.empty) and similarity_matrix is not None and id_ma
     if 'page_number' not in st.session_state:
         st.session_state.page_number = 1
     if 'active_tab' not in st.session_state:
-        st.session_state.active_tab = "Duyệt Món Ăn" 
+        st.session_state.active_tab = "Danh Sách Món Ăn" 
     
-    # Tạo các biến toàn cục
     all_recipe_ids_tuple = tuple(metadata_df['RecipeId'].unique())
     metadata_df_indexed = metadata_df.set_index('RecipeId')
     
-    # --- LOGIC HIỂN THỊ CHÍNH ---
-    # Nếu đang ở chế độ "Xem chi tiết", hiển thị trang chi tiết
     if st.session_state.detail_recipe_id is not None:
         build_detail_page(metadata_df)
     
-    # Ngược lại, hiển thị "tabs"
     else:
-        # <<< SỬA LỖI TẠI ĐÂY: Dùng st.radio
-        tab_list = ["Duyệt Món Ăn", "Gợi Ý Cho Bạn", "Tìm Món Tương Tự"]
+        tab_list = ["Danh Sách Món Ăn", "Gợi Ý Món Ăn", "Tìm Món Tương Tự"]
         
         st.radio(
             "Navigation", 
             tab_list, 
-            key="active_tab", # Liên kết với session state
+            key="active_tab",
             horizontal=True,
             label_visibility="collapsed"
         )
         
-        # <<< SỬA LỖI TẠI ĐÂY: Đọc trực tiếp từ session_state
-        if st.session_state.active_tab == "Duyệt Món Ăn":
+        if st.session_state.active_tab == "Danh Sách Món Ăn":
             build_browse_tab(metadata_df)
-        elif st.session_state.active_tab == "Gợi Ý Cho Bạn":
+        elif st.session_state.active_tab == "Gợi Ý Món Ăn":
             build_predict_tab(metadata_df_indexed)
         elif st.session_state.active_tab == "Tìm Món Tương Tự":
             build_similar_item_tab(metadata_df, metadata_df_indexed)
         
 else:
-    st.error("Đang tải dữ liệu... Vui lòng kiểm tra lại 5 File IDs trong app.py và đảm bảo đã thêm 'scikit-learn' vào requirements.txt")
+    st.error("Đang tải dữ liệu... Vui lòng kiểm tra lại")
