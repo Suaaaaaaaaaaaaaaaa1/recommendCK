@@ -72,20 +72,24 @@ def get_all_predictions(user_id):
 # --- 6. HÀM XÂY DỰNG TAB 1 (Duyệt món ăn) ---
 def build_browse_tab(metadata_df):
     
+    # <<< SỬA LỖI TẠI ĐÂY: Thay đổi cú pháp st.dialog
     # 6.1. Xử lý hiển thị chi tiết
     if 'detail_recipe_id' in st.session_state and st.session_state['detail_recipe_id'] is not None:
         recipe_id = st.session_state['detail_recipe_id']
         recipe_data = metadata_df[metadata_df['RecipeId'] == recipe_id].iloc[0]
         
-        with st.dialog(f"Chi tiết món ăn: {recipe_data['Name']}"):
-            st.image(get_first_image_url(recipe_data['Images']), use_container_width=True)
-            st.subheader(recipe_data['Name'])
-            st.dataframe(recipe_data) 
-            
-            # Đây chính là "nút quay lại" (nút đóng)
-            if st.button("Đóng", key="close_dialog"):
-                st.session_state['detail_recipe_id'] = None
-                st.rerun() 
+        # Tạo đối tượng dialog
+        dialog = st.dialog(f"Chi tiết món ăn: {recipe_data['Name']}")
+        
+        # Gọi các phương thức trên đối tượng
+        dialog.image(get_first_image_url(recipe_data['Images']), use_container_width=True)
+        dialog.subheader(recipe_data['Name'])
+        dialog.dataframe(recipe_data) 
+        
+        if dialog.button("Đóng", key="close_dialog"):
+            st.session_state['detail_recipe_id'] = None
+            st.rerun() 
+    # <<< KẾT THÚC SỬA LỖI
 
     # 6.2. Bộ lọc
     with st.expander("Tìm kiếm và Lọc", expanded=True):
@@ -176,8 +180,6 @@ def build_predict_tab(metadata_df_indexed):
             st.session_state['all_predictions'] = all_preds
     
     # --- HIỂN THỊ KẾT QUẢ TỪ SESSION_STATE ---
-    
-    # <<< SỬA LỖI TẠI ĐÂY: Thêm 'and st.session_state['all_predictions'] is not None'
     if 'all_predictions' in st.session_state and st.session_state['all_predictions'] is not None:
         all_preds = st.session_state['all_predictions']
         top_n_preds = all_preds[:num_recs]
