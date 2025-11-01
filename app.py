@@ -72,13 +72,11 @@ def get_all_predictions(user_id):
 # --- 6. HÀM XÂY DỰNG TAB 1 (Duyệt món ăn) ---
 def build_browse_tab(metadata_df):
     
-    # <<< SỬA LỖI TẠI ĐÂY: Quay lại dùng cú pháp 'with'
-    # 6.1. Xử lý hiển thị chi tiết
+    # 6.1. Xử lý hiển thị chi tiết (Dùng 'with' vì đã nâng cấp Streamlit)
     if 'detail_recipe_id' in st.session_state and st.session_state['detail_recipe_id'] is not None:
         recipe_id = st.session_state['detail_recipe_id']
         recipe_data = metadata_df[metadata_df['RecipeId'] == recipe_id].iloc[0]
         
-        # Dùng 'with' (giờ sẽ hoạt động vì bạn đã nâng cấp Streamlit)
         with st.dialog(f"Chi tiết món ăn: {recipe_data['Name']}"):
             st.image(get_first_image_url(recipe_data['Images']), use_container_width=True)
             st.subheader(recipe_data['Name'])
@@ -87,7 +85,6 @@ def build_browse_tab(metadata_df):
             if st.button("Đóng", key="close_dialog"):
                 st.session_state['detail_recipe_id'] = None
                 st.rerun() 
-    # <<< KẾT THÚC SỬA LỖI
 
     # 6.2. Bộ lọc
     with st.expander("Tìm kiếm và Lọc", expanded=True):
@@ -153,4 +150,89 @@ def build_browse_tab(metadata_df):
                 
                 st.divider()
             
-            col_idx = (col_idx
+            # <<< SỬA LỖI TẠI ĐÂY: Hoàn thành dòng
+            col_idx = (col_idx + 1) % 2
+
+# --- 7. HÀM XÂY DỰNG TAB 2 (Gợi ý) ---
+def build_predict_tab(metadata_df_indexed):
+    
+    st.header("Tìm món ăn cho bạn")
+    
+    # --- WIDGETS ---
+    user_id_input = st.number_input(
+        "Nhập User ID của bạn:", 
+        min_value=1, 
+        value=1535,
+        step=1,
+        help="Hãy nhập một User ID (ví dụ: 1535, 2046, 5201...)"
+    )
+    
+    num_recs = st.slider("Số lượng gợi ý:", min_value=5, max_value=20, value=10)
+
+    # --- NÚT BẤM ---
+    if st.button("Tìm kiếm gợi ý"):
+        with st.spinner("Đang tính toán gợi ý (trên toàn bộ dữ liệu)..."):
+            all_preds = get_all_predictions(user_id_input) 
+            st.session_state['all_predictions'] = all_preds
+    
+    # --- HIỂN THỊ KẾT QUẢ TỪ SESSION_STATE ---
+    if 'all_predictions' in st.session_state and st.session_state['all_predictions'] is not None:
+        all_preds = st.session_state['all_predictions']
+        top_n_preds = all_preds[:num_recs]
+        
+        top_n_ids = [recipe_id for recipe_id, score in top_n_preds]
+        
+        valid_top_n_ids = [idx for idx in top_n_ids if idx in metadata_df_indexed.index]
+        if valid_top_n_ids:
+            recs_df = metadata_df_indexed.loc[valid_top_n_ids].copy()
+            
+            st.subheader(f"Kết quả gợi ý:")
+            
+            cols = st.columns(2)
+            col_idx = 0
+            
+            for index, row in recs_df.iterrows():
+                with cols[col_idx]:
+                    image_url = get_first_image_url(row['Images'])
+                    st.image(image_url, caption=f"Recipe ID: {row.name}", use_container_width=True)
+                    st.subheader(row['Name'])
+                    if 'Description' in row and pd.notna(row['Description']):
+                         st.markdown(f"**Mô tả:** {row['Description'][:150]}...")
+                    st.divider()
+                
+                col_idx = (col_idx + 1) % 2
+        else:
+            st.warning("Không tìm thấy gợi ý nào.")
+
+# --- 8. CHẠY ỨNG DỤNG CHÍNH ---
+st.set_page_config(layout="wide")
+st.title("Hệ thống Gợi ý Món ăn 🍲 🍳 🍰")
+
+model = load_model(MODEL_FILE_ID, MODEL_FILE_PATH)
+metadata_df = load_metadata(METADATA_FILE_ID, METADATA_FILE_PATH)
+
+if model and not metadata_df.empty:
+    
+    # Khởi tạo session state
+    if 'detail_recipe_id' not in st.session_state:
+        st.session_state['detail_recipe_id'] = None
+    if 'all_predictions' not in st.session_state:
+        st.session_state['all_predictions'] = None
+    
+    # Tên cột chính xác
+    all_recipe_ids_tuple = tuple(metadata_df['RecipeId'].unique())
+    metadata_df_indexed = metadata_df.set_index('RecipeId')
+    
+    # Tạo các tab
+    tab1, tab2 = st.tabs(["Duyệt Món Ăn", "Gợi Ý Cho Bạn"])
+
+    with tab1:
+        # Tab 1 dùng metadata_df (chưa index) để lọc
+        build_browse_tab(metadata_df)
+        
+    with tab2:
+        # Tab 2 dùng metadata_df_indexed để tra cứu
+        build_predict_tab(metadata_df_indexed)
+        
+else:
+    st.error("Không thể tải mô hình hoặc dữ liệu từ Google Drive. Vui lòng kiểm tra lại File IDs.")
