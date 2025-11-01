@@ -123,10 +123,9 @@ def build_detail_page(metadata_df):
     recipe_data = metadata_df[metadata_df['RecipeId'] == recipe_id].iloc[0]
     
     # Nút Quay lại
-    # <<< SỬA LỖI TẠI ĐÂY: Xóa st.rerun()
     if st.button("⬅️ Quay lại"):
         st.session_state.detail_recipe_id = None
-        # st.rerun() # Xóa dòng này
+        st.rerun()
     
     # Bố cục trang chi tiết
     img_col, info_col = st.columns([1, 2])
@@ -241,10 +240,9 @@ def build_browse_tab(metadata_df):
                 st.image(image_url, caption=f"Recipe ID: {row['RecipeId']}", use_container_width=True)
                 st.subheader(row['Name'])
                 
-                # <<< SỬA LỖI TẠI ĐÂY: Xóa st.rerun()
                 if st.button("Xem chi tiết", key=f"detail_{row['RecipeId']}"):
                     st.session_state.detail_recipe_id = row['RecipeId']
-                    # st.rerun() # Xóa dòng này
+                    st.rerun() 
                 
                 st.divider()
             
@@ -291,10 +289,9 @@ def build_predict_tab(metadata_df_indexed):
                     st.image(image_url, caption=f"Recipe ID: {row.name}", use_container_width=True)
                     st.subheader(row['Name'])
                     
-                    # <<< SỬA LỖI TẠI ĐÂY: Xóa st.rerun()
                     if st.button("Xem chi tiết", key=f"pred_detail_{row.name}"):
                         st.session_state.detail_recipe_id = row.name 
-                        # st.rerun() # Xóa dòng này
+                        st.rerun()
                     
                     if 'Description' in row and pd.notna(row['Description']):
                          st.markdown(f"**Mô tả:** {row['Description'][:150]}...")
@@ -309,6 +306,7 @@ def build_similar_item_tab(metadata_df, metadata_df_indexed):
     
     st.header("Tìm các món ăn tương tự")
     
+    # Lấy danh sách tên món ăn để chọn
     all_names = sorted(list(metadata_df['Name'].dropna().unique()))
     name_options = ["(Chọn một món ăn)"] + all_names
     
@@ -316,10 +314,12 @@ def build_similar_item_tab(metadata_df, metadata_df_indexed):
     
     if selected_name != "(Chọn một món ăn)":
         
+        # Tìm RecipeId từ tên
         try:
             selected_recipe_id = metadata_df[metadata_df['Name'] == selected_name].iloc[0]['RecipeId']
             st.write(f"Đang tìm các món ăn tương tự như: **{selected_name}** (ID: {selected_recipe_id})")
 
+            # Gọi hàm gợi ý mới
             similar_recipe_ids = get_similar_items(selected_recipe_id, num_recs=9)
             
             if similar_recipe_ids:
@@ -337,10 +337,9 @@ def build_similar_item_tab(metadata_df, metadata_df_indexed):
                         st.image(image_url, caption=f"Recipe ID: {row.name}", use_container_width=True)
                         st.subheader(row['Name'])
                         
-                        # <<< SỬA LỖI TẠI ĐÂY: Xóa st.rerun()
                         if st.button("Xem chi tiết", key=f"sim_detail_{row.name}"):
                             st.session_state.detail_recipe_id = row.name
-                            # st.rerun() # Xóa dòng này
+                            st.rerun()
                         
                         if 'Description' in row and pd.notna(row['Description']):
                              st.markdown(f"**Mô tả:** {row['Description'][:150]}...")
@@ -389,25 +388,25 @@ if model and (not metadata_df.empty) and similarity_matrix is not None and id_ma
     all_recipe_ids_tuple = tuple(metadata_df['RecipeId'].unique())
     metadata_df_indexed = metadata_df.set_index('RecipeId')
     
-    # --- LOGIC HIỂN THỊ CHÍNH (ĐÃ SỬA LỖI) ---
+    # --- LOGIC HIỂN THỊ CHÍNH ---
     # Nếu đang ở chế độ "Xem chi tiết", hiển thị trang chi tiết
     if st.session_state.detail_recipe_id is not None:
         build_detail_page(metadata_df)
     
     # Ngược lại, hiển thị "tabs"
     else:
-        # Dùng st.radio để mô phỏng tabs
+        # <<< SỬA LỖI TẠI ĐÂY: Dùng st.radio
         tab_list = ["Duyệt Món Ăn", "Gợi Ý Cho Bạn", "Tìm Món Tương Tự"]
         
         st.radio(
             "Navigation", 
             tab_list, 
-            key="active_tab", 
+            key="active_tab", # Liên kết với session state
             horizontal=True,
             label_visibility="collapsed"
         )
         
-        # Đọc trực tiếp từ session_state
+        # <<< SỬA LỖI TẠI ĐÂY: Đọc trực tiếp từ session_state
         if st.session_state.active_tab == "Duyệt Món Ăn":
             build_browse_tab(metadata_df)
         elif st.session_state.active_tab == "Gợi Ý Cho Bạn":
