@@ -3,3 +3,4 @@ pandas
 gdown
 scikit-surprise
 numpy<1.24
+scikit-learn
