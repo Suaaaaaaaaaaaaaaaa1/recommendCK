@@ -5,7 +5,7 @@ import os
 import ast
 import gdown
 import random 
-import re # Thư viện cho tìm kiếm và làm sạch text
+import re 
 from surprise import SVD
 
 # --- 1. Định nghĩa Tên tệp và File IDs ---
@@ -59,28 +59,18 @@ def get_first_image_url(images_str):
             return images_str
     return placeholder_image
 
-# --- 5. HÀM LÀM SẠCH TEXT (MỚI) ---
+# --- 5. HÀM LÀM SẠCH TEXT (Không đổi) ---
 def format_c_string(text_str, as_list=False):
-    """
-    Hàm này làm sạch dữ liệu dạng c("a", "b", "c")
-    Bỏ c(), bỏ dấu nháy kép.
-    Nếu as_list=True, trả về một danh sách (dùng cho Hướng dẫn)
-    Nếu as_list=False, trả về chuỗi (dùng cho Nguyên liệu)
-    """
     placeholder = "Không có thông tin"
     if not isinstance(text_str, str) or pd.isna(text_str):
         return placeholder if not as_list else []
-
-    # Dùng regex tìm tất cả nội dung bên trong dấu " "
     matches = re.findall(r'"([^"]+)"', text_str)
-    
     if matches:
         if as_list:
-            return matches # Trả về list
+            return matches 
         else:
-            return ", ".join(matches) # Trả về chuỗi, vd: a, b, c
+            return ", ".join(matches) 
     else:
-        # Nếu không phải định dạng c(...) mà là chuỗi trần
         return text_str if not as_list else [text_str]
 
 # --- 6. HÀM TÍNH TOÁN (Cho Tab 2) ---
@@ -101,21 +91,15 @@ def build_browse_tab(metadata_df):
         recipe_id = st.session_state['detail_recipe_id']
         recipe_data = metadata_df[metadata_df['RecipeId'] == recipe_id].iloc[0]
         
-        # --- BỐ CỤC TRANG CHI TIẾT (Yêu cầu 4) ---
-        
-        # Nút Quay lại
+        # Bố cục trang chi tiết
         if st.button("⬅️ Quay lại danh sách"):
             st.session_state['detail_recipe_id'] = None
             st.rerun()
         
-        # Chia layout: 1 phần ảnh, 2 phần nội dung
         img_col, info_col = st.columns([1, 2])
-
         with img_col:
             st.image(get_first_image_url(recipe_data.get('Images')), use_container_width=True)
-
         with info_col:
-            # --- HIỂN THỊ CÁC TRƯỜNG ĐÃ LỌC (Yêu cầu 1) ---
             st.subheader(recipe_data.get('Name', 'N/A'))
             st.markdown(f"**ID:** {recipe_data.get('RecipeId', 'N/A')}")
             st.markdown(f"**Tác giả:** {recipe_data.get('AuthorName', 'N/A')}")
@@ -138,32 +122,33 @@ def build_browse_tab(metadata_df):
             st.markdown(f"**Đường (Sugar):** {recipe_data.get('SugarContent', 'N/A')}")
             st.markdown(f"**Chất đạm (Protein):** {recipe_data.get('ProteinContent', 'N/A')}")
 
-        # Các phần text dài hiển thị bên dưới
         st.markdown("---")
         st.subheader("Mô tả")
         st.write(recipe_data.get('Description', 'N/A'))
-
         st.subheader("Nguyên liệu")
-        # (Yêu cầu 2) Áp dụng hàm làm sạch text
         ingredients_formatted = format_c_string(recipe_data.get('RecipeIngredientParts'), as_list=False)
         st.write(ingredients_formatted)
-
         st.subheader("Hướng dẫn")
-        # (Yêu cầu 2) Áp dụng hàm làm sạch text và hiển thị dạng list
         instructions_list = format_c_string(recipe_data.get('RecipeInstructions'), as_list=True)
         if isinstance(instructions_list, list):
             for i, step in enumerate(instructions_list):
                 st.markdown(f"{i+1}. {step}")
         else:
             st.write(instructions_list)
-
-        return # Dừng hàm
+        return 
     
     # 7.2. Chế độ DANH SÁCH (Mặc định)
     with st.expander("Tìm kiếm và Lọc", expanded=True):
         col1, col2 = st.columns(2)
         with col1:
-            search_name = st.text_input("Tìm theo Tên món ăn")
+            # <<< SỬA LỖI TẠI ĐÂY: Thay st.text_input bằng st.selectbox
+            # 1. Lấy danh sách tên món ăn
+            all_names = sorted(list(metadata_df['Name'].dropna().unique()))
+            # 2. Thêm tùy chọn "Tất cả"
+            name_options = ["(Chọn tên món ăn)"] + all_names
+            # 3. Tạo selectbox (nó sẽ có thanh tìm kiếm)
+            search_name = st.selectbox("Tìm theo Tên món ăn", options=name_options)
+            
             search_id = st.number_input("Tìm theo ID món ăn", value=None, step=1, placeholder="Nhập ID...")
         
         with col2:
@@ -174,8 +159,11 @@ def build_browse_tab(metadata_df):
     # Áp dụng bộ lọc
     filtered_df = metadata_df.copy()
 
-    if search_name:
-        filtered_df = filtered_df[filtered_df['Name'].str.contains(search_name, case=False, na=False)]
+    # <<< SỬA LỖI TẠI ĐÂY: Thay đổi logic lọc
+    # Lọc chính xác, không lọc từng phần
+    if search_name != "(Chọn tên món ăn)":
+        filtered_df = filtered_df[filtered_df['Name'] == search_name]
+    
     if search_id is not None:
         filtered_df = filtered_df[filtered_df['RecipeId'] == search_id]
     if search_category != "Tất cả":
@@ -190,7 +178,7 @@ def build_browse_tab(metadata_df):
     st.write(f"Tìm thấy **{total_items}** món ăn phù hợp.")
     
     if total_items > 0:
-        ITEMS_PER_PAGE = 9 # Đổi thành 9 để chia hết cho 3
+        ITEMS_PER_PAGE = 9 
         total_pages = max(1, (total_items + ITEMS_PER_PAGE - 1) // ITEMS_PER_PAGE)
         
         page_col1, page_col2 = st.columns([1, 1])
@@ -203,8 +191,7 @@ def build_browse_tab(metadata_df):
         end_idx = min(start_idx + ITEMS_PER_PAGE, total_items)
         items_to_display = filtered_df.iloc[start_idx:end_idx]
 
-        # Vòng lặp hiển thị
-        # <<< SỬA LỖI TẠI ĐÂY (Yêu cầu 3): 3 cột
+        # Vòng lặp hiển thị (3 cột)
         cols = st.columns(3)
         col_idx = 0
         
@@ -220,7 +207,6 @@ def build_browse_tab(metadata_df):
                 
                 st.divider()
             
-            # <<< SỬA LỖI TẠI ĐÂY (Yêu cầu 3): 3 cột
             col_idx = (col_idx + 1) % 3
 
 # --- 8. HÀM XÂY DỰNG TAB 2 (Gợi ý) ---
@@ -235,7 +221,7 @@ def build_predict_tab(metadata_df_indexed):
         step=1,
         help="Hãy nhập một User ID (ví dụ: 1535, 2046, 5201...)"
     )
-    num_recs = st.slider("Số lượng gợi ý:", min_value=3, max_value=21, value=9, step=3) # Đổi thành 9
+    num_recs = st.slider("Số lượng gợi ý:", min_value=3, max_value=21, value=9, step=3)
 
     if st.button("Tìm kiếm gợi ý"):
         with st.spinner("Đang tính toán gợi ý (trên toàn bộ dữ liệu)..."):
@@ -253,7 +239,7 @@ def build_predict_tab(metadata_df_indexed):
             
             st.subheader(f"Kết quả gợi ý:")
             
-            # <<< SỬA LỖI TẠI ĐÂY (Yêu cầu 3): 3 cột
+            # 3 cột
             cols = st.columns(3)
             col_idx = 0
             
@@ -266,7 +252,6 @@ def build_predict_tab(metadata_df_indexed):
                          st.markdown(f"**Mô tả:** {row['Description'][:150]}...")
                     st.divider()
                 
-                # <<< SỬA LỖI TẠI ĐÂY (Yêu cầu 3): 3 cột
                 col_idx = (col_idx + 1) % 3
         else:
             st.warning("Không tìm thấy gợi ý nào.")
