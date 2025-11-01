@@ -86,20 +86,17 @@ def get_all_predictions(user_id):
 # --- 7. HÀM XÂY DỰNG TAB 1 (Duyệt món ăn) ---
 def build_browse_tab(metadata_df):
     
-    # <<< SỬA LỖI TẠI ĐÂY: Định nghĩa hàm callback
+    # Hàm callback (sửa lỗi từ lần trước)
     def clear_all_filters():
-        """Hàm này được gọi khi nhấn nút 'Xóa toàn bộ'"""
         st.session_state.search_name = ""
         st.session_state.search_id = None
         st.session_state.search_category = "Tất cả"
         st.session_state.search_ingredients = ""
         st.session_state.page_number = 1
     
-    # Hàm callback để reset trang khi lọc
     def reset_page_number():
         if st.session_state.page_number > 1:
             st.session_state.page_number = 1
-    # <<< KẾT THÚC SỬA LỖI
 
     # 7.1. Chế độ XEM CHI TIẾT
     if 'detail_recipe_id' in st.session_state and st.session_state.detail_recipe_id is not None:
@@ -114,11 +111,31 @@ def build_browse_tab(metadata_df):
         with img_col:
             st.image(get_first_image_url(recipe_data.get('Images')), use_container_width=True)
         with info_col:
+            
+            # <<< SỬA LỖI TẠI ĐÂY: Thêm lại các trường bị thiếu
             st.subheader(recipe_data.get('Name', 'N/A'))
             st.markdown(f"**ID:** {recipe_data.get('RecipeId', 'N/A')}")
-            # ... (các trường thông tin khác) ...
-            st.markdown(f"**Protein:** {recipe_data.get('ProteinContent', 'N/A')}")
-
+            st.markdown(f"**Tác giả:** {recipe_data.get('AuthorName', 'N/A')}")
+            st.markdown(f"**Danh mục:** {recipe_data.get('RecipeCategory', 'N/A')}")
+            st.markdown(f"**Ngày đăng:** {recipe_data.get('DatePublished', 'N/A')}")
+            st.markdown("---")
+            st.markdown(f"**Thời gian chuẩn bị:** {recipe_data.get('PrepTime', 'N/A')}")
+            st.markdown(f"**Thời gian nấu:** {recipe_data.get('CookTime', 'N/A')}")
+            st.markdown(f"**Tổng thời gian:** {recipe_data.get('TotalTime', 'N/A')}")
+            st.markdown("---")
+            st.markdown(f"**Đánh giá:** {recipe_data.get('AggregatedRating', 'N/A')} / 5.0 ({recipe_data.get('ReviewCount', 0)} lượt)")
+            st.markdown("---")
+            st.markdown(f"**Calories:** {recipe_data.get('Calories', 'N/A')}")
+            st.markdown(f"**Chất béo (Fat):** {recipe_data.get('FatContent', 'N/A')}")
+            st.markdown(f"**Chất béo bão hòa:** {recipe_data.get('SaturatedFatContent', 'N/A')}")
+            st.markdown(f"**Cholesterol:** {recipe_data.get('CholesterolContent', 'N/A')}")
+            st.markdown(f"**Sodium:** {recipe_data.get('SodiumContent', 'N/A')}")
+            st.markdown(f"**Carbohydrate:** {recipe_data.get('CarbohydrateContent', 'N/A')}")
+            st.markdown(f"**Chất xơ (Fiber):** {recipe_data.get('FiberContent', 'N/A')}")
+            st.markdown(f"**Đường (Sugar):** {recipe_data.get('SugarContent', 'N/A')}")
+            st.markdown(f"**Chất đạm (Protein):** {recipe_data.get('ProteinContent', 'N/A')}")
+            # <<< KẾT THÚC SỬA LỖI
+            
         st.markdown("---")
         st.subheader("Mô tả")
         st.write(recipe_data.get('Description', 'N/A'))
@@ -148,9 +165,7 @@ def build_browse_tab(metadata_df):
         
         with col3:
             st.write("Xóa bộ lọc:")
-            # <<< SỬA LỖI TẠI ĐÂY: Gắn hàm callback vào on_click
             st.button("Xóa toàn bộ", use_container_width=True, on_click=clear_all_filters)
-            # <<< KẾT THÚC SỬA LỖI
 
     # Áp dụng bộ lọc
     filtered_df = metadata_df.copy()
