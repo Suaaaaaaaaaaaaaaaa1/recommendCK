@@ -5,7 +5,7 @@ import os
 import ast
 import gdown
 import random 
-import re  # Thư viện cho tìm kiếm
+import re
 from surprise import SVD
 
 # --- 1. Định nghĩa Tên tệp và File IDs ---
@@ -72,17 +72,17 @@ def get_all_predictions(user_id):
 # --- 6. HÀM XÂY DỰNG TAB 1 (Duyệt món ăn) ---
 def build_browse_tab(metadata_df):
     
-    # 6.1. Xử lý hiển thị chi tiết (Modal/Dialog)
+    # 6.1. Xử lý hiển thị chi tiết
     if 'detail_recipe_id' in st.session_state and st.session_state['detail_recipe_id'] is not None:
         recipe_id = st.session_state['detail_recipe_id']
-        
-        # <<< SỬA LỖI TẠI ĐÂY
         recipe_data = metadata_df[metadata_df['RecipeId'] == recipe_id].iloc[0]
         
         with st.dialog(f"Chi tiết món ăn: {recipe_data['Name']}"):
             st.image(get_first_image_url(recipe_data['Images']), use_container_width=True)
             st.subheader(recipe_data['Name'])
             st.dataframe(recipe_data) 
+            
+            # Đây chính là "nút quay lại" (nút đóng)
             if st.button("Đóng", key="close_dialog"):
                 st.session_state['detail_recipe_id'] = None
                 st.rerun() 
@@ -106,7 +106,6 @@ def build_browse_tab(metadata_df):
         filtered_df = filtered_df[filtered_df['Name'].str.contains(search_name, case=False, na=False)]
     
     if search_id is not None:
-        # <<< SỬA LỖI TẠI ĐÂY
         filtered_df = filtered_df[filtered_df['RecipeId'] == search_id]
         
     if search_category != "Tất cả":
@@ -117,7 +116,7 @@ def build_browse_tab(metadata_df):
         for ing in ingredients_list:
             filtered_df = filtered_df[filtered_df['RecipeIngredientParts'].str.contains(ing, case=False, na=False)]
 
-    # 6.4. Phân trang (Pagination)
+    # 6.4. Phân trang
     total_items = len(filtered_df)
     st.write(f"Tìm thấy **{total_items}** món ăn phù hợp.")
     
@@ -142,12 +141,10 @@ def build_browse_tab(metadata_df):
         
         for index, row in items_to_display.iterrows():
             with cols[col_idx]:
-                # <<< SỬA LỖI TẠI ĐÂY
                 image_url = get_first_image_url(row['Images'])
                 st.image(image_url, caption=f"Recipe ID: {row['RecipeId']}", use_container_width=True)
                 st.subheader(row['Name'])
                 
-                # <<< SỬA LỖI TẠI ĐÂY
                 if st.button("Xem chi tiết", key=f"detail_{row['RecipeId']}"):
                     st.session_state['detail_recipe_id'] = row['RecipeId']
                     st.rerun() 
@@ -179,7 +176,9 @@ def build_predict_tab(metadata_df_indexed):
             st.session_state['all_predictions'] = all_preds
     
     # --- HIỂN THỊ KẾT QUẢ TỪ SESSION_STATE ---
-    if 'all_predictions' in st.session_state:
+    
+    # <<< SỬA LỖI TẠI ĐÂY: Thêm 'and st.session_state['all_predictions'] is not None'
+    if 'all_predictions' in st.session_state and st.session_state['all_predictions'] is not None:
         all_preds = st.session_state['all_predictions']
         top_n_preds = all_preds[:num_recs]
         
@@ -222,10 +221,8 @@ if model and not metadata_df.empty:
     if 'all_predictions' not in st.session_state:
         st.session_state['all_predictions'] = None
     
-    # <<< SỬA LỖI TẠI ĐÂY
-    # Biến toàn cục cho hàm dự đoán
+    # Tên cột chính xác
     all_recipe_ids_tuple = tuple(metadata_df['RecipeId'].unique())
-    # DataFrame đã index cho Tab 2
     metadata_df_indexed = metadata_df.set_index('RecipeId')
     
     # Tạo các tab
